@@ -42,7 +42,7 @@ Desde ~2026-11-14 el endpoint de Google (`daily-cloudcode-pa.googleapis.com`) de
 ### Linux / macOS
 
 ```bash
-git clone https://github.com/Deorta/opencode-antigravity-auth-patched.git
+git clone https://github.com/Deorta-Dev/opencode-antigravity-auth-patched.git
 cd opencode-antigravity-auth-patched
 node scripts/install.mjs
 opencode reload
@@ -51,7 +51,7 @@ opencode reload
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/Deorta/opencode-antigravity-auth-patched.git
+git clone https://github.com/Deorta-Dev/opencode-antigravity-auth-patched.git
 cd opencode-antigravity-auth-patched
 node scripts\install.mjs
 opencode reload
