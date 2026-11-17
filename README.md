@@ -186,7 +186,7 @@ Al instalar por Git, OpenCode empaqueta solo `index.js`, `tui.js`, `dist/`, `REA
 
 - `opencode plugin update` actualiza plugins npm y Git; si usaste una etiqueta, puede mover la versión. Si usaste un hash completo queda fija. En cualquier caso, este repo siempre instala la versión parcheada.
 - Si tu configuración todavía tiene la entrada vendor (`.../vendor/antigravity/node_modules/opencode-antigravity-auth`), quítala antes de añadir la spec de Git para no cargar el plugin dos veces.
-- En Windows existe además `opencode-manager.ps1`, que aplica los parches 1 y 2 de forma automática al instalar o reparar el plugin desde su menú ("Reparar plugin Antigravity"). Ese flujo usa la vía vendor, no la de `plugin add`.
+- En Windows, `opencode-manager.ps1` usa esta misma vía: su opción "Reparar plugin Antigravity" ejecuta `opencode plugin add` con esta spec y verifica los tres parches sobre el paquete de la caché de OpenCode. No mantiene copia vendor.
 - El instalador vendor crea una copia de seguridad `opencode.json.bak-<fecha>` cada vez que reescribe la configuración. Si tu archivo era `.jsonc`, los comentarios se pierden (la copia de seguridad los conserva).
 
 ---
