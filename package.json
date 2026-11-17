@@ -1,0 +1,15 @@
+{
+  "name": "opencode-antigravity-auth-patched",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Instalador de una copia parcheada de opencode-antigravity-auth para OpenCode 2.2+ / 2.3.x",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "install:patch": "node scripts/install.mjs",
+    "verify": "node scripts/install.mjs --verify-only"
+  },
+  "license": "MIT"
+}
