@@ -1,8 +1,14 @@
 # opencode-antigravity-auth-patched
 
-Instalador que aplica dos parches a [`opencode-antigravity-auth`](https://github.com/NoeFabris/opencode-antigravity-auth) para que el plugin vuelva a funcionar con **OpenCode 2.2+ / 2.3.x**.
+Distribución parcheada de [`opencode-antigravity-auth`](https://github.com/NoeFabris/opencode-antigravity-auth) para que el plugin vuelva a funcionar con **OpenCode 2.2+ / 2.3.x**.
 
-No es un fork del código fuente: el instalador descarga la versión oficial desde npm, aplica los parches sobre el `dist` compilado y apunta tu configuración de OpenCode a esa copia local. Es **idempotente**, así que puedes ejecutarlo las veces que quieras.
+Se instala directamente con OpenCode, sin scripts manuales:
+
+```sh
+opencode plugin add github:Deorta-Dev/opencode-antigravity-auth-patched#v2.1.2-patched.1
+```
+
+El paquete es un reempaquetado del `dist` oficial 2.1.2 con tres parches aplicados. No incluye código de terceros modificado más allá de esos parches, y conserva la licencia MIT original.
 
 ---
 
@@ -29,17 +35,48 @@ Desde ~2026-11-14 el endpoint de Google (`daily-cloudcode-pa.googleapis.com`) de
 
 ---
 
-## Requisitos
+## Instalación con `opencode plugin add` (recomendada)
 
-- Node.js **20 o superior** (incluye npm)
-- OpenCode **2.2+**
-- El plugin `opencode-antigravity-auth` funcionando antes del cambio de OpenCode (es decir, una cuenta de Google ya autorizable)
+```sh
+opencode plugin add github:Deorta-Dev/opencode-antigravity-auth-patched#v2.1.2-patched.1
+```
+
+Luego reinicia o recarga OpenCode y abre el menú `/antigravity` (o `/auth`) para conectar la cuenta.
+
+Comprobar que quedó instalado:
+
+```sh
+opencode plugin list
+```
+
+Debe aparecer `opencode-antigravity-auth` con la spec de Git. Prueba de inferencia:
+
+```sh
+opencode run --model=google/antigravity-gemini-3.8-flash-high "Reply exactly WORKING and nothing else."
+```
+
+### Fijar a un commit exacto
+
+Una etiqueta puede moverse; un hash completo no. Si quieres una instalación inmutable:
+
+```sh
+opencode plugin add github:Deorta-Dev/opencode-antigravity-auth-patched#<sha-completo>
+```
+
+OpenCode no busca actualizaciones para versiones npm exactas ni para hashes completos de Git.
+
+### Actualizar
+
+```sh
+opencode plugin remove opencode-antigravity-auth
+opencode plugin add github:Deorta-Dev/opencode-antigravity-auth-patched#v2.1.2-patched.1
+```
 
 ---
 
-## Instalación
+## Instalación alternativa (copia vendor + script)
 
-### Linux / macOS
+Si prefieres una copia local que no dependa del caché de paquetes de OpenCode, el repo incluye un instalador que descarga la versión oficial de npm, aplica los mismos tres parches y apunta `opencode.json` a la copia:
 
 ```bash
 git clone https://github.com/Deorta-Dev/opencode-antigravity-auth-patched.git
@@ -48,43 +85,7 @@ node scripts/install.mjs
 opencode reload
 ```
 
-### Windows (PowerShell)
-
-```powershell
-git clone https://github.com/Deorta-Dev/opencode-antigravity-auth-patched.git
-cd opencode-antigravity-auth-patched
-node scripts\install.mjs
-opencode reload
-```
-
-Al terminar, abre OpenCode y ejecuta `/antigravity` (o `/auth`) para conectar la cuenta. Si ya la tenías conectada, normalmente no hace falta repetir el login.
-
-### Verificar
-
-```bash
-node scripts/install.mjs --verify-only
-```
-
-Salida esperada:
-
-```
-[OK] account-management.js serializa sin undefined
-[OK] prompt-signature.js presente
-[OK] request.js importa el saneador
-[OK] request.js llama al saneador en 2 puntos
-[OK] el saneador transforma tools.opencode. correctamente
-[OK] Verificación correcta.
-```
-
-Prueba real de inferencia:
-
-```bash
-opencode run --model=google/antigravity-gemini-3.8-flash-high "Reply exactly WORKING and nothing else."
-```
-
----
-
-## Opciones del instalador
+Opciones:
 
 | Opción | Descripción |
 |---|---|
@@ -95,22 +96,29 @@ opencode run --model=google/antigravity-gemini-3.8-flash-high "Reply exactly WOR
 | `--verify-only` | Solo comprueba que los parches están aplicados |
 | `--help`, `-h` | Ayuda |
 
-Ejemplos:
+Requisitos: Node.js 20+ (incluye npm).
+
+Verificación:
 
 ```bash
-# Otra ubicación
-node scripts/install.mjs --prefix "D:\opencode\vendor\antigravity"
+node scripts/install.mjs --verify-only
+```
 
-# Fijar el directorio de configuración (útil en Windows con perfiles distintos)
-OPENCODE_CONFIG_DIR="$HOME/.config/opencode" node scripts/install.mjs
-
-# Forzar reinstalación + reaplicar parches
-node scripts/install.mjs --force
+```
+[OK] account-management.js serializa sin undefined
+[OK] account-management.js cierra correctamente la llamada a map
+[OK] prompt-signature.js presente
+[OK] request.js importa el saneador
+[OK] request.js llama al saneador en 2 puntos
+[OK] config/updater.js reconoce la spec parcheada
+[OK] PLUGIN_NAME apunta a la spec parcheada
+[OK] el saneador transforma tools.opencode. correctamente
+[OK] Verificación correcta.
 ```
 
 ---
 
-## Qué hace exactamente
+## Los tres parches
 
 ### Parche 1 — `account-management.js`
 
@@ -140,65 +148,53 @@ El round-trip por JSON elimina todas las propiedades con valor `undefined`.
 
 Equivalente al PR upstream [#623](https://github.com/NoeFabris/opencode-antigravity-auth/pull/623) (issue [#622](https://github.com/NoeFabris/opencode-antigravity-auth/issues/622)).
 
-Se añade un módulo nuevo que recorre `systemInstruction`, `system_instruction`, `contents`, `messages` y `extra_body.messages`, y sustituye:
+Se añade un módulo que recorre `systemInstruction`, `system_instruction`, `contents`, `messages` y `extra_body.messages`, y sustituye:
 
 ```
 tools.opencode.session_move   →   tools["opencode"].session_move
 ```
 
-El cambio se hace sobre el objeto ya parseado, nunca sobre el JSON serializado, para no romper el payload. `request.js` llama al saneador en dos puntos del pipeline (antes del envío principal y antes del envío de respaldo).
+El cambio se hace sobre el objeto ya parseado, nunca sobre el JSON serializado, para no romper el payload. `request.js` llama al saneador en dos puntos del pipeline (envío principal y envío de respaldo).
 
----
+### Parche 3 — `config/updater.js` (propio de esta distribución)
 
-## Actualizar
+El plugin reescribe `opencode.json(c)` cuando eliges "configurar modelos" en el menú `/antigravity`. El código original solo reconoce sus entradas si son `opencode-antigravity-auth`, `opencode-antigravity-auth@...` o una ruta local. Con una spec de Git no la reconocía y **añadía `opencode-antigravity-auth@latest`**, es decir la versión sin parches, que OpenCode cargaría además de esta.
 
-El repositorio incluye un `package.json` con dos alias:
+El parche hace que la reconozca y que, si tiene que escribir la entrada, escriba la spec parcheada:
 
-```bash
-npm run install:patch   # instalar / reparar
-npm run verify          # verificar
-```
-
-Si quieres subir de versión del plugin:
-
-```bash
-node scripts/install.mjs --version 2.1.3 --force
-```
-
-Si upstream publica una versión que ya incluye ambos arreglos, **deja de usar este repositorio** y vuelve a la entrada normal de npm en tu configuración:
-
-```json
-"plugins": ["opencode-antigravity-auth@latest"]
-```
-
-Puedes comprobarlo con:
-
-```bash
-npm view opencode-antigravity-auth version
+```js
+const PLUGIN_NAME = "github:Deorta-Dev/opencode-antigravity-auth-patched#v2.1.2-patched.1";
 ```
 
 ---
 
-## Desinstalar
+## Estructura
 
-1. Quita la ruta del vendor de `plugins` en `~/.config/opencode/opencode.json` y pon `"opencode-antigravity-auth"` o `"opencode-antigravity-auth@latest"`.
-2. Borra la carpeta `~/.config/opencode/vendor/antigravity`.
-3. `opencode reload`.
+| Ruta | Contenido |
+|---|---|
+| `dist/` | Plugin ya parcheado (punto de entrada `./dist/index.js`) |
+| `index.js`, `tui.js` | Reexports del punto de entrada |
+| `patches/prompt-signature.js` | Módulo saneador del parche 2 |
+| `scripts/install.mjs` | Instalador de la vía vendor |
+| `package.json` | Manifiesto del plugin (`exports`, dependencias, `files`) |
+
+Al instalar por Git, OpenCode empaqueta solo `index.js`, `tui.js`, `dist/`, `README.md` y `LICENSE`; los scripts de mantenimiento quedan fuera del paquete instalado.
 
 ---
 
 ## Notas
 
-- `opencode plugin update` y `opencode plugin add` **no** conservan los parches: si actualizas el plugin por esa vía, vuelve a ejecutar `node scripts/install.mjs`.
-- En Windows existe además `opencode-manager.ps1`, que aplica estos mismos dos parches de forma automática al instalar o reparar el plugin desde su menú ("Reparar plugin Antigravity").
-- El instalador crea una copia de seguridad `opencode.json.bak-<fecha>` cada vez que reescribe la configuración. Si tu archivo era `.jsonc`, los comentarios se pierden (la copia de seguridad los conserva).
+- `opencode plugin update` actualiza plugins npm y Git; si usaste una etiqueta, puede mover la versión. Si usaste un hash completo queda fija. En cualquier caso, este repo siempre instala la versión parcheada.
+- Si tu configuración todavía tiene la entrada vendor (`.../vendor/antigravity/node_modules/opencode-antigravity-auth`), quítala antes de añadir la spec de Git para no cargar el plugin dos veces.
+- En Windows existe además `opencode-manager.ps1`, que aplica los parches 1 y 2 de forma automática al instalar o reparar el plugin desde su menú ("Reparar plugin Antigravity"). Ese flujo usa la vía vendor, no la de `plugin add`.
+- El instalador vendor crea una copia de seguridad `opencode.json.bak-<fecha>` cada vez que reescribe la configuración. Si tu archivo era `.jsonc`, los comentarios se pierden (la copia de seguridad los conserva).
 
 ---
 
 ## Créditos
 
 - Plugin original: [NoeFabris/opencode-antigravity-auth](https://github.com/NoeFabris/opencode-antigravity-auth) — MIT, © 2025 Jens.
-- Parches: adaptación de los PRs #612 y #623 del mismo proyecto.
-- Instalador y documentación: © 2026 Manuel De Orta.
+- Parches 1 y 2: adaptación de los PRs #612 y #623 del mismo proyecto.
+- Parche 3, empaquetado y documentación: © 2026 Manuel De Orta.
 
 Licencia MIT. Ver [LICENSE](LICENSE).

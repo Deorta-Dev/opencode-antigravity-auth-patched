@@ -32,6 +32,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const DEFAULT_VERSION = "2.1.2";
+// Spec de Git de esta distribución parcheada. El plugin se reconoce a sí mismo
+// en la configuración y, si falta, escribe esta entrada en vez de la de npm.
+const PATCHED_SPEC = "github:Deorta-Dev/opencode-antigravity-auth-patched#v2.1.2-patched.1";
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..");
 const PATCH_DIR = join(REPO_ROOT, "patches");
@@ -283,7 +286,7 @@ function patchAccountList(moduleDir) {
     let text = readFileSync(file, "utf8");
     if (text.includes("JSON.parse(JSON.stringify(accounts))")) return false;
 
-    const pattern = /return\s+(storage\.accounts\.map\(\(account, index\) => \(\{[\s\S]*?\}\))\);/;
+    const pattern = /return\s+(storage\.accounts\.map\(\(account, index\) => \(\{[\s\S]*?\}\)\));/;
     if (!pattern.test(text)) {
         throw new Error("No se reconoce el bloque list() de account-management.js. ¿Versión distinta?");
     }
@@ -361,6 +364,44 @@ function patchRequest(moduleDir) {
     return true;
 }
 
+/**
+ * El plugin reescribe `opencode.json(c)` en la opción "configurar modelos" del
+ * menú /antigravity. Sin este parche no reconocería su propia spec de Git y
+ * añadiría `opencode-antigravity-auth@latest` (la versión sin parches), que
+ * OpenCode cargaría además de esta.
+ */
+function patchSelfReference(moduleDir) {
+    const file = join(moduleDir, "dist", "src", "plugin", "config", "updater.js");
+    if (!existsSync(file)) throw new Error(`No se encontró ${file}`);
+
+    const original = readFileSync(file, "utf8");
+    let text = original;
+
+    const guard = 'name.includes("opencode-antigravity-auth-patched")';
+    if (!text.includes(guard)) {
+        const anchor = 'if (name === "opencode-antigravity-auth" || name.startsWith("opencode-antigravity-auth@"))';
+        if (!text.includes(anchor)) {
+            throw new Error("No se reconoce isAntigravityEntry en config/updater.js.");
+        }
+        text = text.replace(
+            anchor,
+            'if (name === "opencode-antigravity-auth" || name.startsWith("opencode-antigravity-auth@") || name.includes("opencode-antigravity-auth-patched"))',
+        );
+    }
+
+    if (!text.includes(PATCHED_SPEC)) {
+        const pattern = /const PLUGIN_NAME = "[^"]*";/;
+        if (!pattern.test(text)) {
+            throw new Error("No se encontró la constante PLUGIN_NAME en config/updater.js.");
+        }
+        text = text.replace(pattern, `const PLUGIN_NAME = ${JSON.stringify(PATCHED_SPEC)};`);
+    }
+
+    if (text === original) return false;
+    writeFileSync(file, text);
+    return true;
+}
+
 function verifyPatches(moduleDir) {
     const accountFile = join(moduleDir, "dist", "src", "plugin", "account-management.js");
     const requestFile = join(moduleDir, "dist", "src", "plugin", "request.js");
@@ -368,13 +409,21 @@ function verifyPatches(moduleDir) {
 
     const account = existsSync(accountFile) ? readFileSync(accountFile, "utf8") : "";
     const request = existsSync(requestFile) ? readFileSync(requestFile, "utf8") : "";
+    const updaterFile = join(moduleDir, "dist", "src", "plugin", "config", "updater.js");
+    const updater = existsSync(updaterFile) ? readFileSync(updaterFile, "utf8") : "";
     const calls = (request.match(/sanitizeOpenCodePromptSignatureInPlace\(/g) || []).length;
 
     const checks = [
         ["account-management.js serializa sin undefined", account.includes("JSON.parse(JSON.stringify(accounts))")],
+        [
+            "account-management.js cierra correctamente la llamada a map",
+            /const accounts = storage\.accounts\.map\([\s\S]*?\}\)\);/.test(account),
+        ],
         ["prompt-signature.js presente", existsSync(signatureFile)],
         ["request.js importa el saneador", request.includes("./transform/prompt-signature.js")],
         ["request.js llama al saneador en 2 puntos", calls >= 2],
+        ["config/updater.js reconoce la spec parcheada", updater.includes('name.includes("opencode-antigravity-auth-patched")')],
+        ["PLUGIN_NAME apunta a la spec parcheada", updater.includes(PATCHED_SPEC)],
     ];
 
     let allOk = true;
@@ -449,8 +498,9 @@ function main() {
     const accountChanged = patchAccountList(moduleDir);
     const signatureChanged = writePromptSignature(moduleDir);
     const requestChanged = patchRequest(moduleDir);
+    const selfRefChanged = patchSelfReference(moduleDir);
 
-    if (accountChanged || signatureChanged || requestChanged) {
+    if (accountChanged || signatureChanged || requestChanged || selfRefChanged) {
         ok("Parches aplicados.");
     } else {
         ok("Los parches ya estaban aplicados (sin cambios).");

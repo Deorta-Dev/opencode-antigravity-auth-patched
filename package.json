@@ -1,15 +1,67 @@
 {
-  "name": "opencode-antigravity-auth-patched",
-  "version": "1.0.0",
+  "name": "opencode-antigravity-auth",
+  "version": "2.1.2-patched.1",
   "private": true,
-  "description": "Instalador de una copia parcheada de opencode-antigravity-auth para OpenCode 2.2+ / 2.3.x",
-  "type": "module",
-  "engines": {
-    "node": ">=20"
+  "description": "Google Antigravity OAuth for OpenCode, with account rotation, live models, and quota management. Patched distribution for OpenCode 2.2+/2.3.x.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./tui": {
+      "types": "./dist/src/tui.d.ts",
+      "import": "./dist/src/tui.js"
+    }
   },
+  "type": "module",
+  "license": "MIT",
+  "author": "noefabris",
+  "contributors": [
+    "Manuel De Orta"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Deorta-Dev/opencode-antigravity-auth-patched.git"
+  },
+  "homepage": "https://github.com/Deorta-Dev/opencode-antigravity-auth-patched#readme",
+  "bugs": {
+    "url": "https://github.com/Deorta-Dev/opencode-antigravity-auth-patched/issues"
+  },
+  "keywords": [
+    "opencode",
+    "google",
+    "antigravity",
+    "gemini",
+    "oauth",
+    "plugin",
+    "auth",
+    "claude"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "index.js",
+    "tui.js",
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "install:patch": "node scripts/install.mjs",
+    "patch": "node scripts/install.mjs",
     "verify": "node scripts/install.mjs --verify-only"
   },
-  "license": "MIT"
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.137",
+    "@opencode/client": "2.1.2",
+    "@opencode/plugin": "2.1.2",
+    "@opencode-ai/plugin": "^0.15.30",
+    "@openauthjs/openauth": "^0.4.3",
+    "proper-lockfile": "^4.1.2",
+    "xdg-basedir": "^5.1.0",
+    "zod": "^4.0.0"
+  }
 }
